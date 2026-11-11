@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>geojson-three guide</title>
+    <link rel="stylesheet" href="../shared/style.css" />
+    <style>
+        html, body { overflow: auto; height: auto; }
+        .layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); max-width: 1080px; margin: 0 auto; gap: 40px; padding: 32px 16px 80px; }
+        nav { position: sticky; top: 24px; align-self: start; font-size: 13px; }
+        nav .home { display: block; font-weight: 600; font-size: 15px; color: var(--ink); text-decoration: none; margin-bottom: 14px; }
+        nav h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 4px; font-weight: 600; }
+        nav a { display: block; color: var(--ink); text-decoration: none; padding: 2px 0; }
+        nav a:hover { color: var(--accent); }
+        article { font-size: 14px; line-height: 1.65; }
+        article h1 { font-size: 26px; font-weight: 600; margin: 0 0 6px; }
+        article h2 { font-size: 19px; font-weight: 600; margin: 40px 0 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+        article h3 { font-size: 15px; font-weight: 600; margin: 24px 0 6px; }
+        article p, article li { color: #333d47; }
+        article .lead { font-size: 15px; color: var(--muted); }
+        pre { background: #1f2933; color: #e5e9f0; padding: 12px 14px; border-radius: 4px; overflow: auto; font: 12.5px/1.55 var(--mono); }
+        pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+        pre .c { color: #8b98a8; }
+        table.ref { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0 16px; }
+        table.ref th, table.ref td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        table.ref th { font-weight: 600; color: var(--muted); font-size: 12px; }
+        table.ref td:first-child { white-space: nowrap; }
+        .note { border-left: 3px solid var(--accent); background: #f3f6fb; padding: 8px 12px; margin: 12px 0; }
+        .diagram { font: 12px/1.5 var(--mono); background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; border-radius: 4px; white-space: pre; overflow: auto; }
+        @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } nav { position: static; } }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <nav>
+        <a class="home" href="../">geojson-three</a>
+        <h3>Guide</h3>
+        <a href="#install">Installation</a>
+        <a href="#quick-start">Quick start</a>
+        <a href="#structure">Group structure</a>
+        <a href="#coordinates">Large coordinates</a>
+        <a href="#styling">Styling</a>
+        <a href="#points">Point sizing &amp; batching</a>
+        <a href="#geometries">Geometry objects</a>
+        <a href="#measurements">Measurements</a>
+        <a href="#picking">Picking &amp; highlighting</a>
+        <a href="#editing">Editing &amp; export</a>
+        <a href="#reprojection">Reprojection</a>
+        <a href="#formats">Format support</a>
+        <a href="#limits">Limits</a>
+        <h3>Reference</h3>
+        <a href="../api/index.html">API reference</a>
+        <a href="../api/classes/GeoJSONGroup.html">GeoJSONGroup</a>
+        <a href="../api/interfaces/Style.html">Style</a>
+        <a href="../api/interfaces/GeoJSONGroupOptions.html">GeoJSONGroupOptions</a>
+        <a href="../api/classes/Polygon.html">Point / Line / Polygon</a>
+        <h3>Examples</h3>
+        <a href="../site/">Site plan</a>
+        <a href="../precision/">Precision test</a>
+        <a href="../points/">Large point sets</a>
+        <a href="../editor/">GeoJSON editor</a>
+        <a href="../viewer/">GeoJSON viewer</a>
+    </nav>
+
+    <article>
+        <h1>Guide</h1>
+        <p class="lead">geojson-three renders and edits GeoJSON in three.js and keeps it precise at projected and geocentric
+            coordinate magnitudes. This page covers the concepts and common tasks. The
+            <a href="../api/index.html">API reference</a> lists every option and method, and is generated from the
+            JSDoc in the source.</p>
+
+        <h2 id="install">Installation</h2>
+        <pre><code>npm install three github:GalFajon/geojson-three</code></pre>
+        <p>three.js ≥ r160 is a peer dependency, and the library is tested against r187. It ships as plain ES modules
+            with TypeScript declarations in <code>types/</code>, so editors get completions and type checking without a build step.</p>
+
+        <h2 id="quick-start">Quick start</h2>
+<pre><code>import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GeoJSONGroup } from 'geojson-three';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 1e6);
+camera.up.set(0, 0, 1);                       <span class="c">// projected CRSs are z-up</span>
+
+const geo = new GeoJSONGroup(await (await fetch('parcels.geojson')).json(), {
+    style: { fillColor: '#e8e3d3', strokeColor: '#6b6250', fillOpacity: 1 },
+});
+scene.add(geo);
+
+<span class="c">// frame the data using float64 bounds</span>
+const box = geo.getBoundingBox();
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(box.getCenter(new THREE.Vector3()));
+camera.position.copy(controls.target).add(new THREE.Vector3(0, -200, 300));</code></pre>
+
+        <h2 id="structure">Group structure</h2>
+        <p><code>GeoJSONGroup</code> is a <code>THREE.Group</code>. You add it to the scene like any object, but keep
+            the group itself at the identity transform.</p>
+        <div class="diagram">GeoJSONGroup (Group, identity)
+├─ Group  per feature with lines or polygons   position = float64 anchor
+│   ├─ LineSegments2   all LineString parts, merged           role: 'line'
+│   ├─ Mesh            all polygon fills, merged              role: 'fill'
+│   └─ LineSegments2   all polygon rings as outlines          role: 'stroke'
+└─ Points  per (point style, grid cell)                       role: 'points'</div>
+        <p>A feature is addressed by its <code>id</code>, or by an internal key when it has none. Multi-part
+            geometries and GeometryCollections stay a single feature, so picking, highlighting and editing work on the
+            whole feature.</p>
+
+        <h2 id="coordinates">Large coordinates</h2>
+        <p>Float32, which GPUs use for vertex data, has 24 significant bits. At an easting of 500 km it can only
+            store positions every 3 cm; at ECEF magnitude (≈ 6.4 × 10⁶ m) every 50 cm. geojson-three avoids the problem
+            with <b>relative-to-centre</b> rendering:</p>
+        <ol>
+            <li>each feature gets an anchor (the float64 centre of its bounds), stored in <code>object.position</code>;</li>
+            <li>vertices are stored as float32 offsets from that anchor (the subtraction is done in float64);</li>
+            <li>three.js multiplies <code>camera.matrixWorldInverse × object.matrixWorld</code> in float64 on the CPU,
+                so the large translations cancel before anything is uploaded to the GPU.</li>
+        </ol>
+        <p>No custom shaders or camera tricks are needed. Raycasting also works in float64, because three.js
+            transforms the ray into local space with the inverse world matrix.</p>
+        <div class="note">Keep anchored objects compact. Below about 10 km of local extent, float32 error stays under 1 mm.
+            Custom shaders must transform by <code>modelViewMatrix</code>, not by <code>modelMatrix</code> and
+            <code>viewMatrix</code> separately.</div>
+        <p>The <a href="../precision/">precision test</a> shows a 20 mm target at ECEF magnitude: 0.47 nm of vertex error
+            when anchored, 111.7 mm with absolute float32.</p>
+
+        <h2 id="styling">Styling</h2>
+        <p>Styles are plain objects merged over <a href="../api/variables/DEFAULT_STYLE.html"><code>DEFAULT_STYLE</code></a>.
+            You can pass one object for the whole group, or a function that returns a style per feature.</p>
+<pre><code>new GeoJSONGroup(data, {
+    style: (f) => ({
+        lineColor: f.properties.network === 'water' ? '#2563c9' : '#9a6b3f',
+        lineWidth: 2,
+        dashed: f.properties.status === 'planned',
+        dashSize: 2, gapSize: 1,                <span class="c">// CRS units</span>
+    }),
+    highlightStyle: { lineColor: '#d97706', lineWidth: 4 },
+});</code></pre>
+        <table class="ref">
+            <tr><th>Geometry</th><th>Style keys</th></tr>
+            <tr><td>Lines</td><td><code>lineColor</code> <code>lineWidth</code> <code>lineOpacity</code> <code>dashed</code> <code>dashSize</code> <code>gapSize</code> <code>worldUnits</code></td></tr>
+            <tr><td>Polygons</td><td><code>fillColor</code> <code>fillOpacity</code> <code>strokeColor</code> <code>strokeWidth</code></td></tr>
+            <tr><td>Points</td><td><code>pointColor</code> <code>pointSize</code> <code>pointSizeUnits</code> <code>pointMinSize</code> <code>pointMaxSize</code> <code>pointOutlineColor</code></td></tr>
+            <tr><td>All</td><td><code>depthTest</code></td></tr>
+        </table>
+        <p>Materials are cached by their effective style, so 10,000 features in five colours use five materials.
+            For data that carries its own styling, use <code>simplestyle</code>. It maps the
+            <a href="https://github.com/mapbox/simplestyle-spec">simplestyle-spec</a> properties onto style keys, and you
+            can spread it under your own overrides:</p>
+<pre><code>import { simplestyle } from 'geojson-three';
+new GeoJSONGroup(data, { style: (f) => ({ ...simplestyle(f), strokeWidth: 1 }) });</code></pre>
+
+        <h2 id="points">Point sizing &amp; batching</h2>
+        <p>Points are drawn as round, screen-aligned discs. By default <code>pointSize</code> is in pixels and stays
+            constant as you zoom. With <code>pointSizeUnits: 'world'</code>, <code>pointSize</code> is a diameter in CRS
+            units: points grow as the camera approaches and shrink as it moves away, within <code>pointMinSize</code>
+            and <code>pointMaxSize</code> pixels.</p>
+<pre><code><span class="c">// 1.5 m markers that never shrink below 3 px or grow beyond 40 px</span>
+{ pointSizeUnits: 'world', pointSize: 1.5, pointMinSize: 3, pointMaxSize: 40 }</code></pre>
+        <p>Points from all features are merged into batches, one per combination of point settings (size, units,
+            clamps, outline) and grid cell. Fill colour is stored per vertex, so it does not split batches. Highlighting a
+            point only rewrites its colour. <code>pointCellSize</code> (default 10 km) sets the cell size. Larger cells
+            mean fewer draw calls, smaller cells mean smaller float32 offsets.</p>
+        <p>Discs are antialiased and have an outline (<code>pointOutlineColor</code>, <code>pointOutlineWidth</code>).
+            Set the colour to <code>null</code> for plain discs. For map symbols, pass any <code>THREE.Texture</code> as
+            <code>pointTexture</code> (an icon from <code>TextureLoader</code>, or a canvas). The image is multiplied by
+            <code>pointColor</code>, so use white to keep its own colours. Sprites are pulled toward the camera by their
+            on-screen radius, so a symbol standing on a surface is not cut in half by it.</p>
+<pre><code>const canvas = document.createElement('canvas');            <span class="c">// 64 × 64 map symbol</span>
+canvas.width = canvas.height = 64;
+drawTreeSymbol(canvas.getContext('2d'));
+const tree = new THREE.CanvasTexture(canvas);
+tree.colorSpace = THREE.SRGBColorSpace;
+
+new GeoJSONGroup(trees, { style: { pointTexture: tree, pointColor: '#ffffff', pointSize: 22 } });</code></pre>
+
+        <h2 id="geometries">Geometry objects</h2>
+        <p>Besides plain GeoJSON features, the group holds editable <code>Point</code>, <code>Line</code> and
+            <code>Polygon</code> objects. Their coordinates are ordinary float64 arrays: <code>vectors</code> (one
+            position for a point, a list for a line, the outer ring for a polygon) and <code>holes</code> on polygons.
+            Change them and call <code>update()</code>; only that feature is rebuilt.</p>
+<pre><code>import { Point, Line, Polygon } from 'geojson-three';
+
+const wall = geo.addGeometry(new Polygon([[
+    [512300, 5102400, 295], [512310, 5102400, 295], [512310, 5102400, 298], [512300, 5102400, 298],
+]], { properties: { kind: 'wall' }, style: { fillColor: '#c9c3b6' } }));
+
+wall.calculateArea();          <span class="c">// 30 — measured in the wall's own (vertical) plane</span>
+wall.vectors.forEach((v) => (v[2] += 0.5));
+wall.update();
+
+const yard = geo.addGeometry(new Polygon([outerRing]));
+yard.carveHole(new Polygon([buildingFootprint]));   <span class="c">// true if it fits inside</span>
+yard.fillHole(somePointInTheHole);
+
+geo.removeGeometry(wall);</code></pre>
+        <p>A geometry's <code>id</code> is its key in the group, and an id can only be used once.
+            <code>geometriesFromGeoJSON</code> turns a document into geometry objects, splitting multi-part features
+            into one object per part, and <code>geometriesToGeoJSON</code> writes them back. The group dispatches
+            <code>featureadded</code>, <code>featureupdated</code> and <code>featureremoved</code> events for both
+            kinds of content. The <a href="../editor/">editor demo</a> is built entirely on this API. It covers
+            drawing, vertex and feature dragging, vertex insertion and removal, snapping, delete, import and export,
+            in about 400 lines of demo code.</p>
+
+        <h2 id="measurements">Measurements</h2>
+        <p><code>geo.setShowMeasurements(true)</code> labels every segment with its length and every polygon with its
+            area. <code>geometry.setShowMeasurements(true)</code> or <code>geo.setShowMeasurements(true, key)</code>
+            does the same for one feature. Labels are <code>CSS2DObject</code>s, so add a <code>CSS2DRenderer</code>:</p>
+<pre><code>import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const labels = new CSS2DRenderer();
+labels.setSize(innerWidth, innerHeight);
+labels.domElement.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:0';
+renderer.domElement.after(labels.domElement);
+<span class="c">// in the render loop</span>
+labels.render(scene, camera);</code></pre>
+        <p>Lengths are 3D, and areas are measured in the polygon's own plane minus its holes. The text format,
+            unit and label element can be changed with the <code>measurements</code> option. Label positions are
+            computed in float64, so they stay on their segments at any coordinate magnitude.</p>
+
+        <h2 id="picking">Picking &amp; highlighting</h2>
+<pre><code>const raycaster = new THREE.Raycaster();
+raycaster.params.Line2 = { threshold: 6 };    <span class="c">// px, for fat lines</span>
+raycaster.params.Points.threshold = 0.5;      <span class="c">// CRS units</span>
+
+canvas.addEventListener('click', (e) => {
+    raycaster.setFromCamera(pointerNdc(e), camera);   <span class="c">// also sets raycaster.camera</span>
+    const hit = raycaster.intersectObject(geo, true)[0];
+    const picked = geo.featureFromIntersection(hit);  <span class="c">// { key, feature, geometry? } | null</span>
+    if (picked) geo.setHighlighted(picked.key, true);
+});</code></pre>
+        <p><code>hit.point</code> is in world coordinates and accurate to float64, so it can be shown as a
+            surveyed coordinate directly.</p>
+
+        <h2 id="editing">Editing &amp; export</h2>
+<pre><code>const key = geo.addFeature(feature);
+geo.updateFeature(key, { ...feature, geometry: newGeometry });  <span class="c">// rebuilds only this feature</span>
+geo.removeFeature(key);
+
+const out = geo.toGeoJSON({ bbox: true });</code></pre>
+        <p><code>updateFeature</code> is cheap enough to call every frame for live data such as a GNSS rover (see the
+            <a href="../site/">site plan</a>). <code>toGeoJSON</code> returns the source features unchanged: float64
+            coordinates, original geometry types, ids, properties and foreign members such as <code>crs</code>. Polygon
+            rings are closed if the source left them open.</p>
+
+        <h2 id="reprojection">Reprojection</h2>
+        <p>RFC 7946 GeoJSON is longitude/latitude in WGS 84. Rendering degrees directly gives a non-metric, distorted
+            scene, so reproject with the <code>transform</code> option. It runs in float64 before anchoring, so it costs
+            no precision.</p>
+<pre><code>import proj4 from 'proj4';
+const toUtm = proj4('EPSG:4326', '+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs');
+
+new GeoJSONGroup(lonLatData, { transform: ([lon, lat, h]) => [...toUtm.forward([lon, lat]), h] });</code></pre>
+        <p><code>transform</code> is also where height corrections belong, for example converting ellipsoidal heights to
+            orthometric heights with a geoid model.</p>
+
+        <h2 id="formats">Format support</h2>
+        <table class="ref">
+            <tr><th>Feature</th><th>Support</th></tr>
+            <tr><td><code>Point</code>, <code>MultiPoint</code></td><td>Batched discs, pixel or world sizing</td></tr>
+            <tr><td><code>LineString</code>, <code>MultiLineString</code></td><td>Fat lines, dashes, pixel or world width</td></tr>
+            <tr><td><code>Polygon</code>, <code>MultiPolygon</code></td><td>Interior rings, any orientation (walls, roofs), outlines</td></tr>
+            <tr><td><code>GeometryCollection</code></td><td>Yes, including nested collections (with a warning)</td></tr>
+            <tr><td><code>geometry: null</code></td><td>Kept for export, not drawn</td></tr>
+            <tr><td>2D positions</td><td>z = <code>defaultZ</code></td></tr>
+            <tr><td>Extra ordinates (M)</td><td>Ignored for rendering, preserved on export</td></tr>
+            <tr><td><code>id</code>, foreign members, legacy <code>crs</code></td><td>Preserved on export</td></tr>
+            <tr><td>Invalid parts</td><td>Skipped and reported through <code>onWarning</code></td></tr>
+        </table>
+
+        <h2 id="limits">Limits</h2>
+        <ul>
+            <li>Each line or polygon feature has one anchor. Features that span more than about 10 km lose sub-millimetre
+                precision toward their ends. Split very long features into parts.</li>
+            <li>There is one <code>Group</code> per line or polygon feature, which is comfortable up to a few thousand
+                features. Points are batched and scale to hundreds of thousands.</li>
+            <li>Fat lines have no joins, so very wide lines show small notches at corners.</li>
+            <li>Lines and points use WebGL materials (<code>LineMaterial</code>, <code>ShaderMaterial</code>).
+                <code>WebGPURenderer</code> is not supported yet.</li>
+            <li>Geometry objects are not lossless: <code>geometriesFromGeoJSON</code> splits multi-part features into
+                parts and drops foreign members. Use the feature API when a document must round-trip unchanged.</li>
+            <li>Polygons are not validated. Self-intersecting rings or holes outside their shell triangulate incorrectly.</li>
+            <li>Text labels from properties, line arrows and data-driven style specs are not rendered.</li>
+        </ul>
+
+    </article>
+</div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+/* Align the generated API reference with the demo/guide look */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+:root {
+    --font-family-text: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-family-code: 'IBM Plex Mono', ui-monospace, monospace;
+    --light-color-background: #ffffff;
+    --light-color-background-secondary: #eef0f3;
+    --light-color-link: #2563c9;
+    --light-color-accent: #d5dae1;
+}

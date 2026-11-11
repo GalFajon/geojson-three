@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Site plan · geojson-three</title>
+    <link rel="stylesheet" href="../shared/style.css" />
+</head>
+<body>
+    <div class="panel">
+        <section>
+            <a class="nav" href="../">geojson-three / demos</a>
+            <h1>Site plan</h1>
+            <p>A parcel with a building, boundary walls, a road, utilities and survey data, all in
+               UTM zone 33N (EPSG:32633) at full coordinate magnitude. Click a feature to see its attributes.</p>
+        </section>
+        <section>
+            <h2>Legend</h2>
+            <div class="legend" id="legend"></div>
+        </section>
+        <section>
+            <h2>Geometry coverage</h2>
+            <p>Polygon with interior ring · MultiPolygon (vertical walls, pitched roof) · LineString (dashed) ·
+               MultiLineString · Point · MultiPoint · GeometryCollection · live <code>updateFeature()</code> (GNSS rover)</p>
+        </section>
+        <section>
+            <h2>Selection</h2>
+            <div id="selection"><p>Nothing selected.</p></div>
+        </section>
+    </div>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

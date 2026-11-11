@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>geojson-three demos</title>
+    <link rel="stylesheet" href="./shared/style.css" />
+    <style>
+        html, body { overflow: auto; }
+        main { max-width: 860px; margin: 0 auto; padding: 40px 16px 56px; }
+        h1 { font-size: 24px; font-weight: 600; margin: 0; }
+        .lead { color: var(--muted); font-size: 14px; margin: 6px 0 12px; max-width: 640px; }
+        .links { margin: 0 0 24px; font-weight: 500; }
+        .list { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+        a.row { display: grid; grid-template-columns: 180px 1fr; gap: 16px; padding: 14px 16px; border-top: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+        a.row:first-child { border-top: 0; }
+        a.row:hover { background: #f6f8fb; }
+        a.row b { font-weight: 600; color: var(--accent); }
+        a.row span { color: var(--muted); }
+        @media (max-width: 560px) { a.row { grid-template-columns: 1fr; gap: 2px; } }
+        footer { color: var(--muted); margin-top: 20px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>geojson-three</h1>
+        <p class="lead">GeoJSON rendering for three.js with float64 anchoring, so data in projected or geocentric
+            coordinates draws without float32 jitter. Each demo runs the library from source against three.js r187.</p>
+        <p class="links"><a href="./docs/">Guide</a> · <a href="./api/index.html">API reference</a> · <a href="https://github.com/GalFajon/geojson-three">GitHub</a></p>
+        <div class="list">
+            <a class="row" href="./site/"><b>Site plan</b><span>Cadastral parcel, building with vertical walls and a pitched roof, boundary walls, road, utilities, survey points and a live GNSS rover. Covers every geometry type, in UTM zone 33N.</span></a>
+            <a class="row" href="./precision/"><b>Precision test</b><span>A 20 mm survey target with a 1 mm scale bar at ECEF-magnitude coordinates. Switch between anchored and absolute-float32 vertex storage and compare measured error.</span></a>
+            <a class="row" href="./points/"><b>Large point sets</b><span>Up to 100k Point features across a 250 × 165 km region. Shows how batch cell size trades draw calls against float32 error, with picking and attribute lookup.</span></a>
+            <a class="row" href="./editor/"><b>GeoJSON editor</b><span>Draw points, lines and polygons; drag vertices or whole features; insert and remove vertices; snap; delete; measure; import and export. Built on the editable Point, Line and Polygon classes.</span></a>
+            <a class="row" href="./viewer/"><b>GeoJSON viewer</b><span>Open or drop your own file. Lon/lat input is reprojected, simplestyle properties are applied, attributes can be inspected and export is lossless.</span></a>
+        </div>
+        <footer>Source: <code>demos/</code>. Run locally with <code>npm run dev</code>.</footer>
+    </main>
+</body>
+</html>

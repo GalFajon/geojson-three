@@ -1,0 +1,5 @@
+node_modules/
+dist-demos/
+*.log
+.claude/
+demos/public/api/

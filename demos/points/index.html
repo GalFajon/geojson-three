@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Large point sets · geojson-three</title>
+    <link rel="stylesheet" href="../shared/style.css" />
+</head>
+<body>
+    <div class="panel">
+        <section>
+            <a class="nav" href="../">geojson-three / demos</a>
+            <h1>Large point sets</h1>
+            <p>Synthetic utility and address points spread across a 250 × 165 km region in UTM zone 33N (EPSG:32633). Each one is its
+               own <code>Point</code> feature. Points are grouped into draw batches per style and per grid cell,
+               and each batch has its own anchor.</p>
+        </section>
+        <section>
+            <h2>Features</h2>
+            <div class="btns" id="counts"></div>
+        </section>
+        <section>
+            <h2>Batch cell size (<code>pointCellSize</code>)</h2>
+            <div class="btns" id="cells"></div>
+            <p>Larger cells mean fewer draw calls but bigger float32 offsets. The grid overlay shows the batch cells.</p>
+        </section>
+        <section>
+            <h2>Point size</h2>
+            <div class="btns" id="sizes"></div>
+            <p><code>pointSizeUnits: 'world'</code> gives points a real-world diameter, so they scale with zoom
+               (clamped by <code>pointMinSize</code> / <code>pointMaxSize</code>). Pixel sizing keeps them constant on screen.</p>
+        </section>
+        <section>
+            <h2>Classes</h2>
+            <div class="legend" id="legend"></div>
+        </section>
+        <section>
+            <h2>Stats</h2>
+            <div id="stats"></div>
+        </section>
+        <section>
+            <h2>Selection</h2>
+            <div id="selection"><p>Click a point.</p></div>
+        </section>
+    </div>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

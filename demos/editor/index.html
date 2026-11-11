@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GeoJSON editor · geojson-three</title>
+    <link rel="stylesheet" href="../shared/style.css" />
+    <style>
+        .labels { position: absolute; inset: 0; pointer-events: none; z-index: 0; }  /* own stacking context: CSS2DRenderer sets z-index per label */
+        kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: #f7f8fa; }
+        .hint { font-size: 12px; color: var(--muted); }
+        #status { z-index: 2; position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: #1f2933e6; color: #fff;
+                  padding: 5px 12px; border-radius: 3px; font-size: 12px; pointer-events: none; white-space: nowrap; }
+        input[type=text] { font: inherit; width: 100%; padding: 3px 6px; border: 1px solid var(--line); border-radius: 3px; margin-bottom: 6px; }
+        .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; color: var(--muted); }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <section>
+            <a class="nav" href="../">geojson-three / demos</a>
+            <h1>GeoJSON editor</h1>
+            <p>Draw, move and delete features at full UTM magnitude. Everything is made of editable
+               <code>Point</code>, <code>Line</code> and <code>Polygon</code> objects in a <code>GeoJSONGroup</code>.</p>
+        </section>
+        <section>
+            <h2>Tool</h2>
+            <div class="btns" id="tools">
+                <button data-tool="select">Select</button>
+                <button data-tool="point">Point</button>
+                <button data-tool="line">Line</button>
+                <button data-tool="polygon">Polygon</button>
+            </div>
+        </section>
+        <section>
+            <h2>Options</h2>
+            <div class="btns">
+                <button id="measure">Measurements</button>
+                <button id="snap" class="active">Snap</button>
+                <button id="ontop">Draw on top</button>
+            </div>
+        </section>
+        <section>
+            <h2>Selection</h2>
+            <div id="selection"><p>Nothing selected.</p></div>
+        </section>
+        <section>
+            <h2>Data</h2>
+            <div class="btns">
+                <button id="export">Export GeoJSON</button>
+                <button onclick="document.getElementById('file').click()">Import…</button>
+                <button id="clear">Clear</button>
+            </div>
+            <input type="file" id="file" accept=".geojson,.json" hidden />
+        </section>
+        <section>
+            <h2>Keys</h2>
+            <div class="keys">
+                <span><kbd>V</kbd> <kbd>P</kbd> <kbd>L</kbd> <kbd>G</kbd></span><span>select / point / line / polygon</span>
+                <span><kbd>Enter</kbd> / double-click</span><span>finish drawing</span>
+                <span><kbd>Backspace</kbd></span><span>undo last vertex while drawing</span>
+                <span><kbd>Esc</kbd></span><span>cancel / deselect</span>
+                <span><kbd>Del</kbd></span><span>delete selected feature</span>
+                <span>drag vertex / body</span><span>move vertex / move feature</span>
+                <span>double-click edge</span><span>insert vertex</span>
+                <span><kbd>Alt</kbd> + click vertex</span><span>remove vertex</span>
+                <span><kbd>M</kbd> <kbd>S</kbd></span><span>measurements / snapping</span>
+            </div>
+        </section>
+    </div>
+    <div id="status"></div>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

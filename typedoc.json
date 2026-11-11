@@ -1,0 +1,31 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.js"
+  ],
+  "tsconfig": "tsconfig.json",
+  "out": "demos/public/api",
+  "name": "geojson-three API",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "hideGenerator": true,
+  "sort": [
+    "source-order"
+  ],
+  "navigationLinks": {
+    "Guide": "https://www.galfajon.dev/geojson-three/docs/",
+    "Demos": "https://www.galfajon.dev/geojson-three/",
+    "GitHub": "https://github.com/GalFajon/geojson-three"
+  },
+  "customCss": "./docs-theme.css",
+  "plugin": [
+    "typedoc-plugin-no-inherit"
+  ],
+  "externalSymbolLinkMappings": {
+    "@types/three": {
+      "*": "https://threejs.org/docs/"
+    }
+  },
+  "categorizeByGroup": true
+}

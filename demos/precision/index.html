@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Precision test · geojson-three</title>
+    <link rel="stylesheet" href="../shared/style.css" />
+</head>
+<body>
+    <div class="panel">
+        <section>
+            <a class="nav" href="../">geojson-three / demos</a>
+            <h1>Precision at ECEF magnitude</h1>
+            <p>A 20 mm survey target with a 1 mm scale bar, placed at coordinates of about 4.6 × 10⁶ m
+               (the size of ECEF / geocentric coordinates).</p>
+            <p>Switch to absolute float32 to see what happens when vertex buffers hold world coordinates directly.</p>
+        </section>
+        <section>
+            <h2>Vertex storage</h2>
+            <div class="btns"><button id="anchored" class="active">Anchored (RTC)</button><button id="naive">Absolute float32</button></div>
+            <p id="mode"></p>
+        </section>
+        <section>
+            <h2>Numbers</h2>
+            <div id="stats"></div>
+        </section>
+    </div>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

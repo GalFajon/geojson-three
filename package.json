@@ -1,0 +1,51 @@
+{
+  "name": "geojson-three",
+  "version": "0.1.0",
+  "description": "GeoJSON renderer for three.js that stays sub-millimetre precise at real-world (projected / ECEF) coordinates.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "types"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "geojson",
+    "three",
+    "threejs",
+    "gis",
+    "webgl",
+    "rtc",
+    "large-coordinates"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "build:types": "tsc -p .",
+    "docs:api": "typedoc",
+    "dev": "npm run docs:api && vite",
+    "build:demos": "npm run docs:api && vite build"
+  },
+  "peerDependencies": {
+    "three": ">=0.160.0"
+  },
+  "dependencies": {
+    "earcut": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "three": "^0.187.0",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-no-inherit": "^1.6.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.2.0",
+    "vitest": "^3.2.4"
+  },
+  "license": "ISC",
+  "types": "./types/index.d.ts"
+}
