@@ -14,6 +14,7 @@ export type GeometryConfig = import("./geometry/Geometry.js").GeometryConfig;
 export type FeatureRecord = import("./normalize.js").FeatureRecord;
 export type NormalizeOptions = import("./normalize.js").NormalizeOptions;
 export type Position = import("./normalize.js").Position;
+export type Triangulation = import("./triangulate.js").Triangulation;
 export { geometriesFromGeoJSON, geometriesToGeoJSON, downloadGeoJSON } from "./geometry/convert.js";
 export { distance, midpoint, segmentLengths, pathLength, vertexCentroid, ringArea, polygonArea, pointInRing2D, ringInsideRing2D, formatMeasurement } from "./measure.js";
 export { normalizeGeoJSON, normalizeFeature, closeRing, stripClosingVertex } from "./normalize.js";

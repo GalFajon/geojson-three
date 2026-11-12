@@ -14,6 +14,10 @@
  * @property {(message: string, context?: object) => void} [onWarning]  Called for skipped or invalid
  *   geometry. Defaults to `console.warn`.
  * @property {MeasurementOptions} [measurements]  Look and units of measurement labels.
+ * @property {'auto'|'earcut'|'repair'} [triangulation='auto']  How polygon fills are triangulated. `'auto'`
+ *   uses earcut for valid polygons and repairs invalid ones (self-intersecting rings, holes crossing the shell
+ *   or each other) with a constrained Delaunay triangulation, reporting each repair through `onWarning`.
+ *   `'earcut'` skips the validity check. `'repair'` always uses the constrained triangulation.
  */
 /**
  * Options for measurement labels (see {@link GeoJSONGroup#setShowMeasurements}).
@@ -186,6 +190,12 @@ export class GeoJSONGroup extends Group<import("three").Object3DEventMap> {
              */
             strokeWidth?: number;
             /**
+             * Extrusion height in CRS units along +z. Polygons become solids (caps and side
+             * walls) and lines become vertical walls. Both use `fillColor` and are shaded without needing scene lights.
+             * Use a style function to drive it from a property, for example `(f) => ({ extrude: f.properties.height })`.
+             */
+            extrude?: number;
+            /**
              * Depth-test against the rest of the scene.
              */
             depthTest?: boolean;
@@ -209,6 +219,7 @@ export class GeoJSONGroup extends Group<import("three").Object3DEventMap> {
              */
             element?: (text: string, kind: "length" | "area") => HTMLElement;
         };
+        triangulation: "auto" | "earcut" | "repair";
     };
     /** Shared, style-keyed material cache. */
     materials: MaterialCache;
@@ -393,6 +404,13 @@ export type GeoJSONGroupOptions = {
      * Look and units of measurement labels.
      */
     measurements?: MeasurementOptions;
+    /**
+     * How polygon fills are triangulated. `'auto'`
+     * uses earcut for valid polygons and repairs invalid ones (self-intersecting rings, holes crossing the shell
+     * or each other) with a constrained Delaunay triangulation, reporting each repair through `onWarning`.
+     * `'earcut'` skips the validity check. `'repair'` always uses the constrained triangulation.
+     */
+    triangulation?: "auto" | "earcut" | "repair";
 };
 /**
  * Options for measurement labels (see {@link GeoJSONGroup#setShowMeasurements}).

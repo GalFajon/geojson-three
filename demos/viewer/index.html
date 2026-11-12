@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GeoJSON viewer · geojson-three</title>
+    <title>GeoJSON viewer - geojson-three</title>
     <link rel="stylesheet" href="../shared/style.css" />
     <style>
         #drop { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; font-weight: 600;
@@ -19,7 +19,8 @@
             <p>Drop a <code>.geojson</code> file anywhere in the window or open one from disk. RFC 7946 lon/lat input
                (no <code>crs</code> member) is projected to Web Mercator (EPSG:3857) through the <code>transform</code>
                option. Input with a <code>crs</code> member is drawn in its own units.
-               <a href="https://github.com/mapbox/simplestyle-spec">simplestyle</a> properties are applied.</p>
+               <a href="https://github.com/mapbox/simplestyle-spec">simplestyle</a> properties are applied. Features with a numeric <code>height</code> property are extruded, and invalid
+               polygons are repaired (each repair is listed as a warning).</p>
             <div class="btns">
                 <button onclick="document.getElementById('file').click()">Open file…</button>
                 <button id="sample">Load sample</button>

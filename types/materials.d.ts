@@ -56,6 +56,9 @@ export function syncPointUniforms(this: import("three").Points<import("three").B
  * @property {number} [fillOpacity=0.5]  Polygon fill opacity, 0–1.
  * @property {import('three').ColorRepresentation} [strokeColor='#000000']  Polygon outline colour.
  * @property {number} [strokeWidth=1]  Polygon outline width in pixels. `0` disables outlines.
+ * @property {number} [extrude=0]  Extrusion height in CRS units along +z. Polygons become solids (caps and side
+ *   walls) and lines become vertical walls. Both use `fillColor` and are shaded without needing scene lights.
+ *   Use a style function to drive it from a property, for example `(f) => ({ extrude: f.properties.height })`.
  * @property {boolean} [depthTest=true]  Depth-test against the rest of the scene.
  */
 /**
@@ -86,11 +89,12 @@ export class MaterialCache {
      */
     stroke(style: Required<Style>): LineMaterial;
     /**
-     * Material for polygon fills.
+     * Material for polygon fills, extruded solids and walls.
      * @param {Required<Style>} style
+     * @param {boolean} [shaded=false]  Use baked per-vertex shading (extruded geometry).
      * @returns {MeshBasicMaterial}
      */
-    fill(style: Required<Style>): MeshBasicMaterial;
+    fill(style: Required<Style>, shaded?: boolean): MeshBasicMaterial;
     /**
      * Material for point batches.
      * @param {Required<Style>} style
@@ -188,6 +192,12 @@ export type Style = {
      * Polygon outline width in pixels. `0` disables outlines.
      */
     strokeWidth?: number;
+    /**
+     * Extrusion height in CRS units along +z. Polygons become solids (caps and side
+     * walls) and lines become vertical walls. Both use `fillColor` and are shaded without needing scene lights.
+     * Use a style function to drive it from a property, for example `(f) => ({ extrude: f.properties.height })`.
+     */
+    extrude?: number;
     /**
      * Depth-test against the rest of the scene.
      */

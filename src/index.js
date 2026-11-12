@@ -30,3 +30,4 @@ export {
 /** @typedef {import('./normalize.js').FeatureRecord} FeatureRecord */
 /** @typedef {import('./normalize.js').NormalizeOptions} NormalizeOptions */
 /** @typedef {import('./normalize.js').Position} Position */
+/** @typedef {import('./triangulate.js').Triangulation} Triangulation */

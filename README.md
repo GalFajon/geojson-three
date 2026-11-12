@@ -6,14 +6,15 @@ Projected and geocentric coordinates (UTM, national grids, ECEF) are too large f
 lines jitter and small features collapse. `geojson-three` stores each feature relative to a float64 anchor,
 so data renders with sub-micrometre error using stock three.js materials.
 
-**[Demos](https://www.galfajon.dev/geojson-three/) · [Guide](https://www.galfajon.dev/geojson-three/docs/) · [API reference](https://www.galfajon.dev/geojson-three/api/)**
+See the [demos](https://www.galfajon.dev/geojson-three/), the [guide](https://www.galfajon.dev/geojson-three/docs/) and the [API reference](https://www.galfajon.dev/geojson-three/api/).
 
 ![Site plan demo](docs/site.jpg)
 
 ## Features
 
 - All RFC 7946 geometry types, `null` geometries and 2D positions; lossless export
-- Polygons with holes in any plane: horizontal, vertical walls, tilted roofs
+- Polygons with holes in any plane (horizontal, vertical walls, tilted roofs); invalid polygons are repaired
+- Extrusion: polygons become solids and lines become walls, shaded without scene lights
 - Batched points as outlined discs or images, sized in pixels or world units
 - Per-feature styles (including [simplestyle-spec](https://github.com/mapbox/simplestyle-spec)), highlighting and raycast picking
 - Editable `Point`, `Line` and `Polygon` objects with length, area and hole operations
@@ -71,7 +72,6 @@ Keep anchored features compact (under about 10 km for sub-millimetre precision),
 
 - `geometriesFromGeoJSON` splits multi-part features and drops foreign members; use the feature API for
   lossless round trips
-- Self-intersecting or otherwise invalid polygons are not validated
 - No CRS detection, text labels, line arrows or WebGPU support yet
 
 ## Development

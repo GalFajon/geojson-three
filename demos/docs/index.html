@@ -42,6 +42,8 @@
         <a href="#coordinates">Large coordinates</a>
         <a href="#styling">Styling</a>
         <a href="#points">Point sizing &amp; batching</a>
+        <a href="#extrusion">Extrusion</a>
+        <a href="#invalid">Invalid polygons</a>
         <a href="#geometries">Geometry objects</a>
         <a href="#measurements">Measurements</a>
         <a href="#picking">Picking &amp; highlighting</a>
@@ -177,6 +179,26 @@ tree.colorSpace = THREE.SRGBColorSpace;
 
 new GeoJSONGroup(trees, { style: { pointTexture: tree, pointColor: '#ffffff', pointSize: 22 } });</code></pre>
 
+        <h2 id="extrusion">Extrusion</h2>
+        <p>The <code>extrude</code> style key gives features a height in CRS units along +z. Polygons become solids with
+            a top, a bottom and outward-facing side walls, and lines become vertical walls (the line itself stays at the
+            base). Solids and walls use <code>fillColor</code> and get baked shading, so they read as 3D in a scene without
+            lights. Outlines follow the top, the bottom and the vertical edges.</p>
+<pre><code>new GeoJSONGroup(buildings, {
+    style: (f) => ({ extrude: f.properties.height ?? 0, fillColor: '#d6d3cd', fillOpacity: 1 }),
+});
+
+new GeoJSONGroup(fences, { style: { extrude: 1.8, fillColor: '#c9c3b6', fillOpacity: 1 } });</code></pre>
+
+        <h2 id="invalid">Invalid polygons</h2>
+        <p>Real data contains self-intersecting rings, holes that cross the outer ring or each other, holes outside their
+            shell and vertices touching other edges. With the default <code>triangulation: 'auto'</code>, every polygon is
+            checked first. Valid polygons use earcut. Invalid ones are split at every crossing and triangulated with a
+            constrained Delaunay triangulation, and only the triangles inside the outer ring and outside every hole are kept.
+            Each repair is reported through <code>onWarning</code>.</p>
+        <p>The check uses a spatial grid, so it stays fast on large rings. Set <code>triangulation: 'earcut'</code> to skip
+            it for data you know is clean, or <code>'repair'</code> to always use the constrained triangulation.</p>
+
         <h2 id="geometries">Geometry objects</h2>
         <p>Besides plain GeoJSON features, the group holds editable <code>Point</code>, <code>Line</code> and
             <code>Polygon</code> objects. Their coordinates are ordinary float64 arrays: <code>vectors</code> (one
@@ -188,7 +210,7 @@ const wall = geo.addGeometry(new Polygon([[
     [512300, 5102400, 295], [512310, 5102400, 295], [512310, 5102400, 298], [512300, 5102400, 298],
 ]], { properties: { kind: 'wall' }, style: { fillColor: '#c9c3b6' } }));
 
-wall.calculateArea();          <span class="c">// 30 — measured in the wall's own (vertical) plane</span>
+wall.calculateArea();          <span class="c">// 30, measured in the wall's own vertical plane</span>
 wall.vectors.forEach((v) => (v[2] += 0.5));
 wall.update();
 
@@ -262,7 +284,7 @@ new GeoJSONGroup(lonLatData, { transform: ([lon, lat, h]) => [...toUtm.forward([
             <tr><th>Feature</th><th>Support</th></tr>
             <tr><td><code>Point</code>, <code>MultiPoint</code></td><td>Batched discs, pixel or world sizing</td></tr>
             <tr><td><code>LineString</code>, <code>MultiLineString</code></td><td>Fat lines, dashes, pixel or world width</td></tr>
-            <tr><td><code>Polygon</code>, <code>MultiPolygon</code></td><td>Interior rings, any orientation (walls, roofs), outlines</td></tr>
+            <tr><td><code>Polygon</code>, <code>MultiPolygon</code></td><td>Interior rings, any orientation (walls, roofs), outlines, extrusion, repair of invalid rings</td></tr>
             <tr><td><code>GeometryCollection</code></td><td>Yes, including nested collections (with a warning)</td></tr>
             <tr><td><code>geometry: null</code></td><td>Kept for export, not drawn</td></tr>
             <tr><td>2D positions</td><td>z = <code>defaultZ</code></td></tr>
@@ -282,7 +304,6 @@ new GeoJSONGroup(lonLatData, { transform: ([lon, lat, h]) => [...toUtm.forward([
                 <code>WebGPURenderer</code> is not supported yet.</li>
             <li>Geometry objects are not lossless: <code>geometriesFromGeoJSON</code> splits multi-part features into
                 parts and drops foreign members. Use the feature API when a document must round-trip unchanged.</li>
-            <li>Polygons are not validated. Self-intersecting rings or holes outside their shell triangulate incorrectly.</li>
             <li>Text labels from properties, line arrows and data-driven style specs are not rendered.</li>
         </ul>
 

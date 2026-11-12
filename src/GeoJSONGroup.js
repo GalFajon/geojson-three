@@ -31,6 +31,10 @@ let uid = 0;
  * @property {(message: string, context?: object) => void} [onWarning]  Called for skipped or invalid
  *   geometry. Defaults to `console.warn`.
  * @property {MeasurementOptions} [measurements]  Look and units of measurement labels.
+ * @property {'auto'|'earcut'|'repair'} [triangulation='auto']  How polygon fills are triangulated. `'auto'`
+ *   uses earcut for valid polygons and repairs invalid ones (self-intersecting rings, holes crossing the shell
+ *   or each other) with a constrained Delaunay triangulation, reporting each repair through `onWarning`.
+ *   `'earcut'` skips the validity check. `'repair'` always uses the constrained triangulation.
  */
 
 /**
@@ -132,6 +136,7 @@ export class GeoJSONGroup extends Group {
             pointCellSize: options.pointCellSize ?? 10_000,
             onWarning: options.onWarning ?? ((/** @type {string} */ m) => console.warn(`[geojson-three] ${m}`)),
             measurements: { unit: 'm', ...options.measurements },
+            triangulation: options.triangulation ?? 'auto',
         };
 
         /** Shared, style-keyed material cache. */
@@ -320,7 +325,7 @@ export class GeoJSONGroup extends Group {
             for (const child of entry.object.children) {
                 const c = /** @type {Mesh} */ (child);
                 if (c.userData.role === 'line') c.material = this.materials.line(style);
-                else if (c.userData.role === 'fill') c.material = this.materials.fill(style);
+                else if (c.userData.role === 'fill') c.material = this.materials.fill(style, c.userData.shaded);
                 else if (c.userData.role === 'stroke') c.material = this.materials.stroke(style);
             }
         }
@@ -395,10 +400,17 @@ export class GeoJSONGroup extends Group {
     getBoundingBox(target = new Box3()) {
         target.makeEmpty();
         const v = new Vector3();
-        for (const { record } of this.entries.values()) {
+        for (const { record, style } of this.entries.values()) {
+            const h = style.extrude > 0 ? style.extrude : 0;
             for (const p of record.points) target.expandByPoint(v.set(p[0], p[1], p[2]));
-            for (const l of record.lines) for (const p of l) target.expandByPoint(v.set(p[0], p[1], p[2]));
-            for (const poly of record.polygons) for (const p of poly[0]) target.expandByPoint(v.set(p[0], p[1], p[2]));
+            for (const l of record.lines) for (const p of l) {
+                target.expandByPoint(v.set(p[0], p[1], p[2]));
+                if (h) target.expandByPoint(v.set(p[0], p[1], p[2] + h));
+            }
+            for (const poly of record.polygons) for (const p of poly[0]) {
+                target.expandByPoint(v.set(p[0], p[1], p[2]));
+                if (h) target.expandByPoint(v.set(p[0], p[1], p[2] + h));
+            }
         }
         return target;
     }
@@ -535,6 +547,11 @@ export class GeoJSONGroup extends Group {
         group.name = String(entry.key);
         const order = style.depthTest ? 0 : 10;
 
+        const h = style.extrude > 0 ? style.extrude : 0;
+        const up = (/** @type {number[]} */ p) => [p[0], p[1], p[2] + h];
+        /** @type {number[][]} */
+        const strokeSegs = [];
+
         if (record.lines.length) {
             const segs = [];
             for (const line of record.lines) for (let i = 0; i < line.length - 1; i++) segs.push(line[i], line[i + 1]);
@@ -542,22 +559,40 @@ export class GeoJSONGroup extends Group {
             obj.userData.role = 'line';
             obj.renderOrder = order + 1;
             group.add(obj);
+
+            if (h) {
+                // walls from lines
+                const walls = new SolidBuilder(anchor);
+                for (const line of record.lines) {
+                    for (let i = 0; i < line.length - 1; i++) {
+                        walls.wall(line[i], line[i + 1], h, null);
+                        strokeSegs.push(up(line[i]), up(line[i + 1]));
+                    }
+                    for (const p of line) strokeSegs.push(p, up(p));
+                }
+                const mesh = walls.mesh(this.materials.fill(style, true));
+                if (mesh) { mesh.renderOrder = order; group.add(mesh); }
+            }
         }
 
         if (record.polygons.length) {
-            const fill = this.#polygonMesh(record, anchor, style);
+            const fill = this.#polygonMesh(record, anchor, style, h);
             if (fill) { fill.renderOrder = order; group.add(fill); }
 
-            if (style.strokeWidth > 0) {
-                const segs = [];
-                for (const poly of record.polygons) for (const ring of poly) {
-                    for (let i = 0; i < ring.length; i++) segs.push(ring[i], ring[(i + 1) % ring.length]);
+            for (const poly of record.polygons) for (const ring of poly) {
+                for (let i = 0; i < ring.length; i++) {
+                    const a = ring[i], b = ring[(i + 1) % ring.length];
+                    strokeSegs.push(a, b);
+                    if (h) strokeSegs.push(up(a), up(b), a, up(a));
                 }
-                const obj = segmentsObject(segs, anchor, this.materials.stroke(style), false);
-                obj.userData.role = 'stroke';
-                obj.renderOrder = order + 1;
-                group.add(obj);
             }
+        }
+
+        if (strokeSegs.length && style.strokeWidth > 0) {
+            const obj = segmentsObject(strokeSegs, anchor, this.materials.stroke(style), false);
+            obj.userData.role = 'stroke';
+            obj.renderOrder = order + 1;
+            group.add(obj);
         }
 
         if (this.showMeasurements || entry.showMeasurements) group.add(this.#measurementLabels(record, anchor));
@@ -604,39 +639,51 @@ export class GeoJSONGroup extends Group {
     }
 
     /**
+     * Fill mesh for all polygon parts of a feature: flat fills, or solids when `h` > 0.
      * @param {import('./normalize.js').FeatureRecord} record
      * @param {number[]} anchor
      * @param {Required<import('./materials.js').Style>} style
+     * @param {number} h  Extrusion height (0 for flat).
      */
-    #polygonMesh(record, anchor, style) {
-        const positions = [];
-        const normals = [];
-        const indices = [];
+    #polygonMesh(record, anchor, style, h) {
+        const solid = new SolidBuilder(anchor);
+        const flat = { positions: [], normals: [], indices: [] };
 
         for (const poly of record.polygons) {
             const local = poly.map((ring) => ring.map((p) => [p[0] - anchor[0], p[1] - anchor[1], p[2] - anchor[2]]));
-            const tri = triangulatePolygon(local);
+            const tri = triangulatePolygon(local, { mode: this.options.triangulation });
             if (!tri) {
-                this.options.onWarning('Degenerate polygon (zero area) – fill skipped', { index: record.index });
+                this.options.onWarning('Degenerate polygon (zero area): fill skipped', { index: record.index });
                 continue;
             }
-            const base = positions.length / 3;
-            for (const v of tri.vertices) {
-                positions.push(v[0], v[1], v[2]);
-                normals.push(tri.normal[0], tri.normal[1], tri.normal[2]);
+            if (tri.repaired) {
+                this.options.onWarning('Invalid polygon (self-intersecting or overlapping rings): repaired', { index: record.index });
             }
-            for (const i of tri.indices) indices.push(base + i);
+
+            if (h) {
+                solid.extrudedPolygon(tri, local, h);
+                continue;
+            }
+            const base = flat.positions.length / 3;
+            for (const v of tri.vertices) {
+                flat.positions.push(v[0], v[1], v[2]);
+                flat.normals.push(tri.normal[0], tri.normal[1], tri.normal[2]);
+            }
+            for (const i of tri.indices) flat.indices.push(base + i);
         }
-        if (!indices.length) return null;
+
+        if (h) return solid.mesh(this.materials.fill(style, true));
+        if (!flat.indices.length) return null;
 
         const geometry = new BufferGeometry();
-        geometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3));
-        geometry.setAttribute('normal', new BufferAttribute(new Float32Array(normals), 3));
-        geometry.setIndex(positions.length / 3 > 65535 ? new BufferAttribute(new Uint32Array(indices), 1) : new BufferAttribute(new Uint16Array(indices), 1));
+        geometry.setAttribute('position', new BufferAttribute(new Float32Array(flat.positions), 3));
+        geometry.setAttribute('normal', new BufferAttribute(new Float32Array(flat.normals), 3));
+        geometry.setIndex(indexAttribute(flat.indices, flat.positions.length / 3));
         geometry.computeBoundingSphere();
 
-        const mesh = new Mesh(geometry, this.materials.fill(style));
+        const mesh = new Mesh(geometry, this.materials.fill(style, false));
         mesh.userData.role = 'fill';
+        mesh.userData.shaded = false;
         return mesh;
     }
 
@@ -713,6 +760,140 @@ export class GeoJSONGroup extends Group {
         this.remove(entry.object);
         entry.object = null;
     }
+}
+
+/**
+ * @param {number[]} indices
+ * @param {number} vertexCount
+ */
+function indexAttribute(indices, vertexCount) {
+    return vertexCount > 65535 ? new BufferAttribute(new Uint32Array(indices), 1) : new BufferAttribute(new Uint16Array(indices), 1);
+}
+
+const LIGHT = (() => { const l = [0.45, 0.3, 0.85], n = Math.hypot(...l); return l.map((c) => c / n); })();
+
+/**
+ * Brightness for baked shading, so extruded solids read as 3D without any lights in the scene.
+ * @param {number[]} n  Unit normal.
+ * @param {boolean} twoSided  Shade by |n·L| (walls that are seen from both sides).
+ */
+function shade(n, twoSided) {
+    const d = n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2];
+    return 0.6 + 0.4 * Math.max(0, twoSided ? Math.abs(d) : d);
+}
+
+/** Builds extruded solids and walls with flat normals and baked vertex shading, in anchor-local coordinates. */
+class SolidBuilder {
+    /** @param {number[]} anchor */
+    constructor(anchor) {
+        this.anchor = anchor;
+        /** @type {number[]} */ this.positions = [];
+        /** @type {number[]} */ this.normals = [];
+        /** @type {number[]} */ this.colors = [];
+        /** @type {number[]} */ this.indices = [];
+    }
+
+    /**
+     * @param {number[][]} verts  local positions
+     * @param {number[]} normal
+     * @param {boolean} twoSided
+     */
+    #vertices(verts, normal, twoSided) {
+        const base = this.positions.length / 3;
+        const c = shade(normal, twoSided);
+        for (const v of verts) {
+            this.positions.push(v[0], v[1], v[2]);
+            this.normals.push(normal[0], normal[1], normal[2]);
+            this.colors.push(c, c, c);
+        }
+        return base;
+    }
+
+    /**
+     * Vertical quad from a to b, `h` high.
+     * @param {number[]} a
+     * @param {number[]} b
+     * @param {number} h
+     * @param {number[]|null} outward  Plan-view outward direction, or null for a two-sided wall.
+     * @param {boolean} [local=false]  Whether a and b are already anchor-local.
+     */
+    wall(a, b, h, outward, local = false) {
+        const o = local ? [0, 0, 0] : this.anchor;
+        const p = [a[0] - o[0], a[1] - o[1], a[2] - o[2]], q = [b[0] - o[0], b[1] - o[1], b[2] - o[2]];
+        const dx = q[0] - p[0], dy = q[1] - p[1];
+        const len = Math.hypot(dx, dy);
+        if (len < 1e-12) return;
+        let n = [dy / len, -dx / len, 0];
+        if (outward && n[0] * outward[0] + n[1] * outward[1] < 0) n = [-n[0], -n[1], 0];
+        const base = this.#vertices([p, q, [q[0], q[1], q[2] + h], [p[0], p[1], p[2] + h]], n, !outward);
+        this.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+
+    /**
+     * Top cap, bottom cap and outward-facing side walls of a triangulated polygon.
+     * @param {import('./triangulate.js').Triangulation} tri  local coordinates
+     * @param {number[][][]} rings  local rings `[outer, ...holes]`
+     * @param {number} h
+     */
+    extrudedPolygon(tri, rings, h) {
+        const n = tri.normal[2] < 0 ? tri.normal.map((c) => -c) : tri.normal;
+        const top = this.#vertices(tri.vertices.map((v) => [v[0], v[1], v[2] + h]), n, false);
+        for (const i of tri.indices) this.indices.push(top + i);
+        const bottom = this.#vertices(tri.vertices, n.map((c) => -c), false);
+        for (let i = 0; i < tri.indices.length; i += 3) {
+            this.indices.push(bottom + tri.indices[i], bottom + tri.indices[i + 2], bottom + tri.indices[i + 1]);
+        }
+
+        const inside = (/** @type {number} */ x, /** @type {number} */ y) => {
+            let r = insideRing([x, y], rings[0]);
+            for (let k = 1; k < rings.length && r; k++) if (insideRing([x, y], rings[k])) r = false;
+            return r;
+        };
+        for (const ring of rings) {
+            for (let i = 0; i < ring.length; i++) {
+                const a = ring[i], b = ring[(i + 1) % ring.length];
+                const dx = b[0] - a[0], dy = b[1] - a[1];
+                const len = Math.hypot(dx, dy);
+                if (len < 1e-12) continue;
+                const nx = dy / len, ny = -dx / len, d = Math.max(len * 1e-4, 1e-6);
+                const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+                const outward = inside(mx + nx * d, my + ny * d) ? [-nx, -ny] : [nx, ny];
+                this.wall(a, b, h, outward, true);
+            }
+        }
+    }
+
+    /**
+     * @param {import('three').Material} material
+     * @returns {Mesh|null}
+     */
+    mesh(material) {
+        if (!this.indices.length) return null;
+        const geometry = new BufferGeometry();
+        geometry.setAttribute('position', new BufferAttribute(new Float32Array(this.positions), 3));
+        geometry.setAttribute('normal', new BufferAttribute(new Float32Array(this.normals), 3));
+        geometry.setAttribute('color', new BufferAttribute(new Float32Array(this.colors), 3));
+        geometry.setIndex(indexAttribute(this.indices, this.positions.length / 3));
+        geometry.computeBoundingSphere();
+        const mesh = new Mesh(geometry, material);
+        mesh.userData.role = 'fill';
+        mesh.userData.shaded = true;
+        return mesh;
+    }
+}
+
+/**
+ * Even-odd point-in-ring test on x/y.
+ * @param {number[]} p
+ * @param {number[][]} ring
+ */
+function insideRing(p, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+        if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
 }
 
 /**

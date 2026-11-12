@@ -24,6 +24,15 @@ function isLonLat(geojson) {
     return any;
 }
 
+/** Average latitude of all positions (for the Mercator height scale). */
+function meanLatitude(geojson) {
+    let sum = 0, n = 0;
+    for (const r of normalizeGeoJSON(geojson, { onWarning: () => {} })) {
+        for (const p of [...r.points, ...r.lines.flat(), ...r.polygons.flat(2)]) { sum += p[1]; n++; }
+    }
+    return n ? sum / n : 0;
+}
+
 // --- loading -----------------------------------------------------------------------------
 function show(geojson, name) {
     if (geo) { stage.scene.remove(geo); geo.dispose(); }
@@ -31,11 +40,23 @@ function show(geojson, name) {
     selection.innerHTML = '<p>Click a feature.</p>';
 
     const lonLat = isLonLat(geojson);
+    // Web Mercator stretches distances by 1/cos(latitude); scale heights the same way to keep proportions
+    const k = lonLat ? 1 / Math.cos(meanLatitude(geojson) * deg) : 1;
     const warnings = [];
     const t0 = performance.now();
     geo = new GeoJSONGroup(geojson, {
-        transform: lonLat ? webMercator : null,
-        style: (f) => ({ fillColor: '#c7d2e0', fillOpacity: 0.85, strokeColor: '#4b5563', strokeWidth: 1, lineColor: '#2563c9', lineWidth: 2, pointColor: '#d94f30', pointSize: 9, pointOutlineColor: '#1f2933', ...simplestyle(f) }),
+        transform: lonLat ? ([lon, lat, h]) => { const [x, y] = webMercator([lon, lat, 0]); return [x, y, h * k]; } : null,
+        style: (f) => {
+            const height = Number(f.properties?.height);
+            const extruded = height > 0;
+            return {
+                fillColor: extruded ? '#d6d3cd' : '#c7d2e0', fillOpacity: extruded ? 1 : 0.85,
+                strokeColor: '#4b5563', strokeWidth: 1, lineColor: '#2563c9', lineWidth: 2,
+                pointColor: '#d94f30', pointSize: 9, pointOutlineColor: '#1f2933',
+                extrude: extruded ? height * k : 0,
+                ...simplestyle(f),
+            };
+        },
         highlightStyle: { fillColor: '#fde68a', lineColor: '#d97706', pointColor: '#d97706', fillOpacity: 1 },
         onWarning: (m) => warnings.push(m),
     });
@@ -56,9 +77,9 @@ function show(geojson, name) {
         source: name,
         features: geo.entries.size,
         ...Object.fromEntries(Object.entries(types).map(([k, v]) => [`  ${k}`, v])),
-        CRS: lonLat ? 'EPSG:4326 → EPSG:3857' : (geojson.crs?.properties?.name ?? 'as-is (no crs)'),
-        'bbox min': box.isEmpty() ? '—' : `${fmt(box.min.x, 1)}, ${fmt(box.min.y, 1)}`,
-        'bbox max': box.isEmpty() ? '—' : `${fmt(box.max.x, 1)}, ${fmt(box.max.y, 1)}`,
+        CRS: lonLat ? 'EPSG:4326, shown in EPSG:3857' : (geojson.crs?.properties?.name ?? 'as-is (no crs)'),
+        'bbox min': box.isEmpty() ? 'none' : `${fmt(box.min.x, 1)}, ${fmt(box.min.y, 1)}`,
+        'bbox max': box.isEmpty() ? 'none' : `${fmt(box.max.x, 1)}, ${fmt(box.max.y, 1)}`,
         'build time': `${ms.toFixed(0)} ms`,
         warnings: warnings.length ? `${warnings.length}: ${warnings.slice(0, 3).join('; ')}` : 'none',
     });
@@ -85,7 +106,7 @@ stage.renderer.domElement.addEventListener('click', (e) => {
     selected = res?.key ?? null;
     if (selected == null) { selection.innerHTML = '<p>Click a feature.</p>'; return; }
     geo.setHighlighted(selected, true);
-    selection.innerHTML = `<p><code>${String(selected)}</code> · ${res.feature.geometry?.type}</p>` + kv(res.feature.properties);
+    selection.innerHTML = `<p><code>${String(selected)}</code> (${res.feature.geometry?.type})</p>` + kv(res.feature.properties);
 });
 
 // --- file input, drag & drop, export ---------------------------------------------------
@@ -118,6 +139,14 @@ function sample() {
     }
     features.push({ type: 'Feature', properties: { name: 'river (synthetic)', class: 'watercourse', stroke: '#2563c9', 'stroke-width': 5 }, geometry: { type: 'LineString', coordinates: Array.from({ length: 30 }, (_, i) => ll(-60 + i * 14, -40 + 22 * Math.sin(i / 4))) } });
     features.push({ type: 'Feature', properties: { name: 'street network', class: 'road', stroke: '#6b7280', 'stroke-width': 3 }, geometry: { type: 'MultiLineString', coordinates: [[ll(-30, 46), ll(360, 90)], [ll(-30, 98), ll(360, 142)], [ll(150, -30), ll(110, 230)]] } });
+    // building footprints with a height property (extruded by the viewer's style)
+    for (let row = 0; row < 4; row++) for (let col = 0; col < 7; col++) {
+        if (rand() < 0.35) continue;
+        const height = Math.round(6 + rand() * 18);
+        features.push({ type: 'Feature', properties: { name: 'building', height, fill: '#d6d3cd' }, geometry: { type: 'Polygon', coordinates: rect(col * 48 + 6, row * 52 + 8, 16 + rand() * 6, 14 + rand() * 6, 0.12) } });
+    }
+    // deliberately invalid: the ring crosses itself (it is repaired when rendered)
+    features.push({ type: 'Feature', properties: { name: 'plaza (self-intersecting ring)', fill: '#f2c46d', 'fill-opacity': 0.9 }, geometry: { type: 'Polygon', coordinates: [[ll(380, 20), ll(440, 80), ll(440, 20), ll(380, 80), ll(380, 20)]] } });
     const pois = [['pharmacy', 60, 20], ['school', 240, 160], ['bus stop', 150, 50], ['post office', 300, 100]];
     for (const [kind, x, y] of pois) features.push({ type: 'Feature', properties: { name: kind, 'marker-color': '#d94f30', 'marker-size': 'medium' }, geometry: { type: 'Point', coordinates: ll(x, y) } });
     return { type: 'FeatureCollection', features };

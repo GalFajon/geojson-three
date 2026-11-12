@@ -34,6 +34,7 @@ const CATEGORIES = {
     paving:   { label: 'Paved courtyard',   fillColor: '#d3d0c9', fillOpacity: 1, strokeColor: '#8d8a84', strokeWidth: 1 },
     building: { label: 'Building (walls)',  fillColor: '#f4f4f2', fillOpacity: 1, strokeColor: '#3a3f45', strokeWidth: 1.2 },
     roof:     { label: 'Building (roof)',   fillColor: '#9c5a4a', fillOpacity: 1, strokeColor: '#5e3329', strokeWidth: 1.2 },
+    garage:   { label: 'Garage (extruded)', fillColor: '#d6d3cd', fillOpacity: 1, strokeColor: '#4b5563', strokeWidth: 1, extrude: 3 },
     wall:     { label: 'Boundary wall',     fillColor: '#c9c3b6', fillOpacity: 1, strokeColor: '#6b6250', strokeWidth: 1 },
     road:     { label: 'Carriageway',       fillColor: '#b9bec5', fillOpacity: 1, strokeColor: '#7d848c', strokeWidth: 1 },
     axis:     { label: 'Road axis',         lineColor: '#ffffff', lineWidth: 2, dashed: true, dashSize: 3, gapSize: 2 },
@@ -56,6 +57,9 @@ add('parcel-1734-2', 'parcel', {
     ]
 }, { parcel_no: '1734/2', area_m2: 2204, land_use: 'residential' });
 add('courtyard', 'paving', { type: 'Polygon', coordinates: [closed([at(38, 8, -0.02), at(38, 22, -0.02), at(52, 22, -0.02), at(52, 8, -0.02)])] }, { material: 'concrete pavers' });
+
+// a footprint extruded by its style (extrude: 3)
+add('garage', 'garage', { type: 'Polygon', coordinates: [closed([at(47, 24), at(57, 24), at(57, 30), at(47, 30)])] }, { use: 'garage', height_m: 3 });
 
 // building: 4 vertical wall faces (two of them gabled) + a pitched roof (tilted planes)
 {
@@ -152,14 +156,14 @@ stage.pick(geo, {
     highlight: false,
     onHover(res, hit, e) {
         readout(hit?.point);
-        res ? tip.show(`${CATEGORIES[res.feature.properties.category]?.label} · ${res.feature.geometry.type}`, e) : tip.hide();
+        res ? tip.show(`${CATEGORIES[res.feature.properties.category]?.label} (${res.feature.geometry.type})`, e) : tip.hide();
     },
     onClick(res) {
         if (selected != null) geo.setHighlighted(selected, false);
         selected = res?.key ?? null;
         if (selected == null) { selection.innerHTML = '<p>Nothing selected.</p>'; return; }
         geo.setHighlighted(selected, true);
-        selection.innerHTML = `<p><code>${selected}</code> · ${res.feature.geometry.type}</p>` + kv(res.feature.properties);
+        selection.innerHTML = `<p><code>${selected}</code> (${res.feature.geometry.type})</p>` + kv(res.feature.properties);
     },
 });
 
