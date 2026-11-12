@@ -15,11 +15,15 @@
 html, body {
     margin: 0;
     height: 100%;
-    overflow: hidden;
+    overflow: hidden;   /* full-screen 3D demos; text pages opt out with <html class="page"> */
     background: var(--bg);
     color: var(--ink);
     font: 13px/1.5 'IBM Plex Sans', system-ui, sans-serif;
 }
+
+/* scrollable text pages (index, guide). Higher specificity than the rule above, so it wins
+   whatever order the stylesheets end up in after bundling. */
+html.page, html.page body { overflow: auto; height: auto; }
 
 canvas { display: block; }
 a { color: var(--accent); }
